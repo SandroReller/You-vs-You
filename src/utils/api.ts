@@ -2,11 +2,19 @@ import { projectId, publicAnonKey } from './supabase/info';
 
 const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-c7ad6a82`;
 
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
 async function apiCall(endpoint: string, options: RequestInit = {}) {
+  const token = accessToken || publicAnonKey;
+  
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${publicAnonKey}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...options.headers,
     },
