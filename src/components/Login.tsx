@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogIn, UserPlus, Mail, Lock, User } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, User, Check, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -11,6 +11,44 @@ interface LoginProps {
   error?: string;
 }
 
+interface PasswordCriteria {
+  label: string;
+  test: (password: string) => boolean;
+}
+
+const passwordCriteria: PasswordCriteria[] = [
+  { label: 'Mindestens 8 Zeichen', test: (p) => p.length >= 8 },
+  { label: 'Mindestens ein Großbuchstabe', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Mindestens ein Kleinbuchstabe', test: (p) => /[a-z]/.test(p) },
+  { label: 'Mindestens eine Zahl', test: (p) => /[0-9]/.test(p) },
+  { label: 'Mindestens ein Sonderzeichen', test: (p) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+];
+
+function calculatePasswordStrength(password: string): {
+  strength: number;
+  color: string;
+  label: string;
+} {
+  if (!password) {
+    return { strength: 0, color: 'bg-gray-200', label: '' };
+  }
+
+  const metCriteria = passwordCriteria.filter(c => c.test(password)).length;
+  const percentage = (metCriteria / passwordCriteria.length) * 100;
+
+  if (percentage === 100) {
+    return { strength: 100, color: 'bg-green-500', label: 'Sehr stark' };
+  } else if (percentage >= 80) {
+    return { strength: percentage, color: 'bg-lime-500', label: 'Stark' };
+  } else if (percentage >= 60) {
+    return { strength: percentage, color: 'bg-yellow-500', label: 'Mittel' };
+  } else if (percentage >= 40) {
+    return { strength: percentage, color: 'bg-orange-500', label: 'Schwach' };
+  } else {
+    return { strength: percentage, color: 'bg-red-500', label: 'Sehr schwach' };
+  }
+}
+
 export function Login({ onLogin, onSignup, error }: LoginProps) {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
@@ -18,10 +56,17 @@ export function Login({ onLogin, onSignup, error }: LoginProps) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const passwordStrength = calculatePasswordStrength(password);
+  const isPasswordValid = passwordCriteria.every(c => c.test(password));
+  const unmetCriteria = passwordCriteria.filter(c => !c.test(password));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSignup && !isPasswordValid) return;
+
     setLoading(true);
-    
+
     try {
       if (isSignup) {
         await onSignup(email, password, name);
@@ -96,10 +141,76 @@ export function Login({ onLogin, onSignup, error }: LoginProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={isSignup ? 8 : 6}
                 className="pl-10"
               />
             </div>
+
+            {/* Password Strength Indicator */}
+            {isSignup && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-gray-600">Passwort-Stärke</span>
+                    <span
+                      className={`text-sm font-medium ${
+                        passwordStrength.strength === 100
+                          ? 'text-green-600'
+                          : passwordStrength.strength >= 80
+                          ? 'text-lime-600'
+                          : passwordStrength.strength >= 60
+                          ? 'text-yellow-600'
+                          : passwordStrength.strength >= 40
+                          ? 'text-orange-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        passwordStrength.strength === 100
+                          ? 'bg-green-500'
+                          : passwordStrength.strength >= 80
+                          ? 'bg-lime-500'
+                          : passwordStrength.strength >= 60
+                          ? 'bg-yellow-500'
+                          : passwordStrength.strength >= 40
+                          ? 'bg-orange-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${passwordStrength.strength}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Unmet Criteria */}
+                {unmetCriteria.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <p className="text-sm text-gray-700">Noch benötigt:</p>
+                    {unmetCriteria.map((criterion, index) => (
+                      <div key={index} className="flex items-center space-x-2 text-sm text-gray-600">
+                        <X size={16} className="text-red-500 flex-shrink-0" />
+                        <span>{criterion.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* All Criteria Met */}
+                {isPasswordValid && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 text-sm text-green-700">
+                      <Check size={16} className="text-green-600 flex-shrink-0" />
+                      <span>Alle Anforderungen erfüllt!</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -110,8 +221,8 @@ export function Login({ onLogin, onSignup, error }: LoginProps) {
 
           <Button
             type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            disabled={loading || (isSignup && !isPasswordValid)}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               'Lädt...'
