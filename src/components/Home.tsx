@@ -1,21 +1,31 @@
 import { Flame, Target, Trophy, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const quotes = [
-  "Der einzige Weg, großartige Arbeit zu leisten, ist zu lieben, was man tut. - Steve Jobs",
-  "Du bist nicht dein Fehler, du bist deine Versuche. - Unbekannt",
-  "Erfolg ist die Summe kleiner Bemühungen, die Tag für Tag wiederholt werden. - Robert Collier",
-  "Die einzige Person, die du sein solltest, ist die beste Version von dir selbst. - Unbekannt",
-  "Jeder Tag ist eine neue Chance, besser zu werden. - Unbekannt",
-  "Disziplin ist die Brücke zwischen Zielen und Erfolg. - Jim Rohn",
-];
+
 
 export function Home() {
   const [quote, setQuote] = useState('');
-
+  
   useEffect(() => {
-    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-    setQuote(randomQuote);
+    const fetchQuote = async () => {
+      const res = await fetch(
+        "https://hlefrtudfsnucsusnunl.supabase.co/functions/v1/quotes",
+        {
+          method: "POST", 
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + import.meta.env.VITE_SUPABASE_ANON_KEY
+          }
+        }
+      );
+      const data = await res.json();
+      console.log("Anon Key:", import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+      const random = data[Math.floor(Math.random() * data.length)];
+      setQuote(random);
+    };
+
+    fetchQuote();
   }, []);
 
   return (
@@ -32,7 +42,7 @@ export function Home() {
         
         {/* Quote Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-3xl mx-auto border-l-4 border-purple-600">
-          <p className="text-lg text-gray-700 italic">{quote}</p>
+          <p className="text-lg text-gray-700 italic">{quote.q} - {quote.a}</p>
         </div>
       </div>
 
