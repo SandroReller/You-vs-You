@@ -1,6 +1,6 @@
-import { Home, Apple, CheckSquare, Gamepad2 } from 'lucide-react';
+import { Home, Apple, CheckSquare, Gamepad2, User } from 'lucide-react';
 
-type Page = 'home' | 'calories' | 'habits' | 'games';
+type Page = 'home' | 'calories' | 'habits' | 'games' | 'account';
 
 interface NavigationProps {
   currentPage: Page;
@@ -13,6 +13,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
     { id: 'calories' as Page, icon: Apple, label: 'Kalorien' },
     { id: 'habits' as Page, icon: CheckSquare, label: 'Habits' },
     { id: 'games' as Page, icon: Gamepad2, label: 'Games' },
+    { id: 'account' as Page, icon: User, label: 'Account' },
   ];
 
   return (
