@@ -34,15 +34,27 @@ export function CalorieTracker() {
       try {
         setIsLoading(true);
 
+        // Load meals
         const mealsData = await getMeals();
         if (mealsData.meals) {
-          const today = new Date().toDateString();
-          const todayMeals = mealsData.meals.filter((meal: Meal) =>
-            new Date(meal.timestamp).toDateString() === today
-          );
-          setMeals(todayMeals);
+          const now = new Date();
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay()); // Sonntag = 0
+          startOfWeek.setHours(0, 0, 0, 0);
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(endOfWeek.getDate() + 6);
+          endOfWeek.setHours(23, 59, 59, 999);
+
+          const weekMeals = mealsData.meals.filter((meal: Meal) => {
+            const mealDate = new Date(meal.timestamp);
+            return mealDate >= startOfWeek && mealDate <= endOfWeek;
+          });
+
+          setMeals(weekMeals);
         }
 
+        // Load settings
         const settingsData = await getSettings();
         if (settingsData.settings?.calorieGoal) {
           setDailyGoal(settingsData.settings.calorieGoal);
@@ -60,7 +72,7 @@ export function CalorieTracker() {
 
   // Save meals to Supabase
   useEffect(() => {
-    if (!isLoading && meals.length > 0) {
+    if (!isLoading) {
       saveMeals(meals).catch((error) => {
         console.error('Error saving meals:', error);
       });
@@ -87,7 +99,6 @@ export function CalorieTracker() {
     };
 
     setMeals([...meals, newMeal]);
-    // Reset form
     setMealName('');
     setMealCalories('');
     setMealProtein('');
@@ -281,47 +292,56 @@ export function CalorieTracker() {
         </form>
       </div>
 
-      {/* Meals List */}
+      {/* Meals List für die Woche */}
       <div className="bg-white rounded-2xl shadow-lg p-8">
         <h3 className="mb-6 text-gray-800 flex items-center space-x-2">
           <TrendingUp size={24} />
-          <span>Heutige Mahlzeiten</span>
+          <span>Mahlzeiten diese Woche</span>
         </h3>
+
         {meals.length === 0 ? (
           <p className="text-center text-gray-500 py-8">
-            Noch keine Mahlzeiten heute. Füge deine erste Mahlzeit hinzu!
+            Noch keine Mahlzeiten diese Woche.
           </p>
         ) : (
           <div className="space-y-3">
-            {meals.map((meal) => (
-              <div
-                key={meal.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div>
-                  <p className="text-gray-800">{meal.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(meal.timestamp).toLocaleTimeString('de-DE', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {meal.calories} kcal | {meal.protein ?? 0}g P | {meal.carbs ?? 0}g KH | {meal.fat ?? 0}g F
-                  </p>
-                  {meal.category && <p className="text-xs text-gray-400">Kategorie: {meal.category}</p>}
-                  {meal.notes && <p className="text-xs text-gray-400">Notizen: {meal.notes}</p>}
+            {meals
+              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+              .map((meal) => (
+                <div
+                  key={meal.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div>
+                    <p className="text-gray-800">{meal.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(meal.timestamp).toLocaleTimeString('de-DE', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}{' '}
+                      –{' '}
+                      {new Date(meal.timestamp).toLocaleDateString('de-DE', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'numeric',
+                      })}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {meal.calories} kcal | {meal.protein ?? 0}g P | {meal.carbs ?? 0}g KH | {meal.fat ?? 0}g F
+                    </p>
+                    {meal.category && <p className="text-xs text-gray-400">Kategorie: {meal.category}</p>}
+                    {meal.notes && <p className="text-xs text-gray-400">Notizen: {meal.notes}</p>}
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => deleteMeal(meal.id)}
+                      className="text-red-500 hover:text-red-600 p-2"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => deleteMeal(meal.id)}
-                    className="text-red-500 hover:text-red-600 p-2"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
