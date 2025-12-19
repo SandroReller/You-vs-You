@@ -6,6 +6,11 @@ interface Meal {
   id: string;
   name: string;
   calories: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  category?: 'Frühstück' | 'Mittagessen' | 'Abendessen' | 'Snack';
+  notes?: string;
   timestamp: string;
 }
 
@@ -14,6 +19,11 @@ export function CalorieTracker() {
   const [dailyGoal, setDailyGoal] = useState(2000);
   const [mealName, setMealName] = useState('');
   const [mealCalories, setMealCalories] = useState('');
+  const [mealProtein, setMealProtein] = useState('');
+  const [mealCarbs, setMealCarbs] = useState('');
+  const [mealFat, setMealFat] = useState('');
+  const [mealCategory, setMealCategory] = useState<'Frühstück' | 'Mittagessen' | 'Abendessen' | 'Snack' | ''>('');
+  const [mealNotes, setMealNotes] = useState('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('2000');
   const [isLoading, setIsLoading] = useState(true);
@@ -23,19 +33,16 @@ export function CalorieTracker() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        
-        // Load meals
+
         const mealsData = await getMeals();
         if (mealsData.meals) {
-          // Filter meals from today only
           const today = new Date().toDateString();
-          const todayMeals = mealsData.meals.filter((meal: Meal) => 
+          const todayMeals = mealsData.meals.filter((meal: Meal) =>
             new Date(meal.timestamp).toDateString() === today
           );
           setMeals(todayMeals);
         }
-        
-        // Load settings
+
         const settingsData = await getSettings();
         if (settingsData.settings?.calorieGoal) {
           setDailyGoal(settingsData.settings.calorieGoal);
@@ -47,14 +54,14 @@ export function CalorieTracker() {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
   }, []);
 
   // Save meals to Supabase
   useEffect(() => {
     if (!isLoading && meals.length > 0) {
-      saveMeals(meals).catch(error => {
+      saveMeals(meals).catch((error) => {
         console.error('Error saving meals:', error);
       });
     }
@@ -71,16 +78,27 @@ export function CalorieTracker() {
       id: Date.now().toString(),
       name: mealName,
       calories: Number(mealCalories),
+      protein: mealProtein ? Number(mealProtein) : undefined,
+      carbs: mealCarbs ? Number(mealCarbs) : undefined,
+      fat: mealFat ? Number(mealFat) : undefined,
+      category: mealCategory || undefined,
+      notes: mealNotes || undefined,
       timestamp: new Date().toISOString(),
     };
 
     setMeals([...meals, newMeal]);
+    // Reset form
     setMealName('');
     setMealCalories('');
+    setMealProtein('');
+    setMealCarbs('');
+    setMealFat('');
+    setMealCategory('');
+    setMealNotes('');
   };
 
   const deleteMeal = (id: string) => {
-    setMeals(meals.filter(meal => meal.id !== id));
+    setMeals(meals.filter((meal) => meal.id !== id));
   };
 
   const saveGoal = async () => {
@@ -98,6 +116,7 @@ export function CalorieTracker() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-center mb-4 bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
           Kalorien Tracker
@@ -107,7 +126,7 @@ export function CalorieTracker() {
         </p>
       </div>
 
-      {/* Daily Goal Card */}
+      {/* Tagesziel Card */}
       <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -155,7 +174,9 @@ export function CalorieTracker() {
           <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                progress > 100 ? 'bg-red-500' : 'bg-gradient-to-r from-orange-400 to-red-500'
+                progress > 100
+                  ? 'bg-red-500'
+                  : 'bg-gradient-to-r from-orange-400 to-red-500'
               }`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -185,7 +206,7 @@ export function CalorieTracker() {
               value={mealName}
               onChange={(e) => setMealName(e.target.value)}
               placeholder="z.B. Frühstück, Mittagessen..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
             />
           </div>
           <div>
@@ -195,12 +216,65 @@ export function CalorieTracker() {
               value={mealCalories}
               onChange={(e) => setMealCalories(e.target.value)}
               placeholder="z.B. 450"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-2">Protein (g)</label>
+              <input
+                type="number"
+                value={mealProtein}
+                onChange={(e) => setMealProtein(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Kohlenhydrate (g)</label>
+              <input
+                type="number"
+                value={mealCarbs}
+                onChange={(e) => setMealCarbs(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Fett (g)</label>
+              <input
+                type="number"
+                value={mealFat}
+                onChange={(e) => setMealFat(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-2">Kategorie</label>
+            <select
+              value={mealCategory}
+              onChange={(e) => setMealCategory(e.target.value as any)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+            >
+              <option value="">Keine</option>
+              <option value="Frühstück">Frühstück</option>
+              <option value="Mittagessen">Mittagessen</option>
+              <option value="Abendessen">Abendessen</option>
+              <option value="Snack">Snack</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-2">Notizen</label>
+            <input
+              type="text"
+              value={mealNotes}
+              onChange={(e) => setMealNotes(e.target.value)}
+              placeholder="z.B. extra Eiweißshake..."
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg hover:shadow-lg transition-shadow"
+            className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg hover:shadow-lg"
           >
             Mahlzeit hinzufügen
           </button>
@@ -232,9 +306,13 @@ export function CalorieTracker() {
                       minute: '2-digit',
                     })}
                   </p>
+                  <p className="text-sm text-gray-500">
+                    {meal.calories} kcal | {meal.protein ?? 0}g P | {meal.carbs ?? 0}g KH | {meal.fat ?? 0}g F
+                  </p>
+                  {meal.category && <p className="text-xs text-gray-400">Kategorie: {meal.category}</p>}
+                  {meal.notes && <p className="text-xs text-gray-400">Notizen: {meal.notes}</p>}
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span className="text-orange-600">{meal.calories} kcal</span>
                   <button
                     onClick={() => deleteMeal(meal.id)}
                     className="text-red-500 hover:text-red-600 p-2"
