@@ -158,7 +158,14 @@ export function MemoryGame({ onBack }: MemoryGameProps) {
         {gameState === 'result' && (
           <div className="text-center mb-6">
             <p className="text-xl mb-4">Level {level} erreicht</p>
-            <Button onClick={restart}>Neu starten</Button>
+            <Button
+  variant="secondary"
+  size="default"
+  onClick={restart}
+>
+  Nochmal spielen
+</Button>
+
           </div>
         )}
 
