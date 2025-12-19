@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ArrowLeft, Target } from 'lucide-react';
 import { getGameScore, saveGameScore } from '../../utils/api';
 
@@ -12,10 +12,10 @@ interface TargetPosition {
   size: number;
 }
 
-type GameState = 'start' | 'playing' | 'result';
+type GameState = 'playing' | 'result';
 
 export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
-  const [gameState, setGameState] = useState<GameState>('start');
+  const [gameState, setGameState] = useState<GameState>('playing');
   const [target, setTarget] = useState<TargetPosition | null>(null);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -24,36 +24,32 @@ export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const lastClickRef = useRef<number>(Date.now());
 
+  /* ---------------- Load Best Score ---------------- */
   useEffect(() => {
-    const loadBestScore = async () => {
-      try {
-        const data = await getGameScore('aim-trainer');
-        if (data.score > 0) {
-          setBestScore(data.score);
-        }
-      } catch (error) {
-        console.error('Error loading aim trainer best score:', error);
-      }
-    };
-    
-    loadBestScore();
+    getGameScore('aim-trainer')
+      .then(data => {
+        if (data.score > 0) setBestScore(data.score);
+      })
+      .catch(console.error);
   }, []);
 
+  /* ---------------- Timer ---------------- */
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0 && gameState === 'playing') {
       endGame();
     }
   }, [timeLeft, gameState]);
 
+  /* ---------------- Generate Target ---------------- */
   const generateTarget = () => {
     if (!gameAreaRef.current) return;
 
     const rect = gameAreaRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return; // Defensive
+
     const minSize = 40;
     const maxSize = 80;
     const size = Math.random() * (maxSize - minSize) + minSize;
@@ -64,22 +60,30 @@ export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
     setTarget({ x, y, size });
   };
 
+  /* ---------------- Generate Target on Mount / Restart ---------------- */
+  useLayoutEffect(() => {
+    if (gameState === 'playing') {
+      generateTarget();
+    }
+  }, [gameState]);
+
+  /* ---------------- Start / Restart ---------------- */
   const startGame = () => {
     setGameState('playing');
     setScore(0);
     setTimeLeft(30);
     setClickTimes([]);
     lastClickRef.current = Date.now();
-    generateTarget();
   };
 
   const handleTargetClick = () => {
     const now = Date.now();
     const timeSinceLastClick = now - lastClickRef.current;
-    
-    setClickTimes([...clickTimes, timeSinceLastClick]);
-    setScore(score + 1);
+
+    setClickTimes(prev => [...prev, timeSinceLastClick]);
+    setScore(prev => prev + 1);
     lastClickRef.current = now;
+
     generateTarget();
   };
 
@@ -87,17 +91,13 @@ export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
     setGameState('result');
     if (score > bestScore) {
       setBestScore(score);
-      saveGameScore('aim-trainer', score).catch(error => {
-        console.error('Error saving aim trainer score:', error);
-      });
+      saveGameScore('aim-trainer', score).catch(console.error);
     }
   };
 
   const averageTime = clickTimes.length > 0
     ? Math.round(clickTimes.reduce((a, b) => a + b, 0) / clickTimes.length)
     : null;
-
-  const accuracy = score > 0 ? ((score / (score + 1)) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
@@ -118,7 +118,7 @@ export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
         </p>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats */}
       {gameState === 'playing' && (
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-4 text-center">
@@ -138,21 +138,6 @@ export function AimTrainerGame({ onBack }: AimTrainerGameProps) {
 
       {/* Game Area */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        {gameState === 'start' && (
-          <div className="text-center py-20">
-            <Target className="mx-auto mb-6 text-green-500" size={64} />
-            <p className="text-xl text-gray-700 mb-8">
-              Bereit, deine Zielgenauigkeit zu testen?
-            </p>
-            <button
-              onClick={startGame}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-shadow"
-            >
-              Spiel starten
-            </button>
-          </div>
-        )}
-
         {gameState === 'playing' && (
           <div
             ref={gameAreaRef}

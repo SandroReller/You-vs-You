@@ -13,7 +13,7 @@ export function NumberMemoryGame({ onBack }: NumberMemoryGameProps) {
   const [gameState, setGameState] = useState<GameState>('start');
   const [number, setNumber] = useState('');
   const [userInput, setUserInput] = useState('');
-  const [bestLevel, setBestLevel] = useState(0);
+  const [bestLevel, setBestLevel] = useState(0)
 
   useEffect(() => {
     const loadBestScore = async () => {

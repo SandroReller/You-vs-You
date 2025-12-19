@@ -67,7 +67,6 @@ export function ReactionGame({ onBack }: ReactionGameProps) {
       setReactionTime(null);
     }
   };
-
   const averageTime = attempts.length > 0
     ? Math.round(attempts.reduce((a, b) => a + b, 0) / attempts.length)
     : null;
