@@ -1,28 +1,44 @@
 import { Flame, Target, Trophy, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-
+import { publicAnonKey } from '../utils/supabase/info';
 
 export function Home() {
-  const [quote, setQuote] = useState('');
+  const [quote, setQuote] = useState({ q: 'Lade...', a: '' });
+  const [error, setError] = useState(false);
   
   useEffect(() => {
     const fetchQuote = async () => {
-      const res = await fetch(
-        "https://hlefrtudfsnucsusnunl.supabase.co/functions/v1/quotes",
-        {
-          method: "POST", 
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + import.meta.env.VITE_SUPABASE_ANON_KEY
+      try {
+        const res = await fetch(
+          "https://hlefrtudfsnucsusnunl.supabase.co/functions/v1/quotes",
+          {
+            method: "POST", 
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${publicAnonKey}`
+            }
           }
+        );
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
         }
-      );
-      const data = await res.json();
-      console.log("Anon Key:", import.meta.env.VITE_SUPABASE_ANON_KEY);
+        
+        const data = await res.json();
+        console.log("Quote data fetched:", data);
 
-      const random = data[Math.floor(Math.random() * data.length)];
-      setQuote(random);
+        if (data && data.length > 0) {
+          const random = data[Math.floor(Math.random() * data.length)];
+          setQuote(random);
+        } else {
+          setQuote({ q: 'Der einzige Weg, großartige Arbeit zu leisten, ist zu lieben, was man tut.', a: 'Steve Jobs' });
+        }
+      } catch (err) {
+        console.error("Error fetching quote:", err);
+        setError(true);
+        // Fallback quote
+        setQuote({ q: 'Der einzige Weg, großartige Arbeit zu leisten, ist zu lieben, was man tut.', a: 'Steve Jobs' });
+      }
     };
 
     fetchQuote();
@@ -42,7 +58,14 @@ export function Home() {
         
         {/* Quote Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-3xl mx-auto border-l-4 border-purple-600">
-          <p className="text-lg text-gray-700 italic">{quote.q} - {quote.a}</p>
+          <p className="text-lg text-gray-700 italic">
+            "{quote.q}" {quote.a && `- ${quote.a}`}
+          </p>
+          {error && (
+            <p className="text-sm text-gray-400 mt-2">
+              (Zitate-Service vorübergehend nicht verfügbar)
+            </p>
+          )}
         </div>
       </div>
 
